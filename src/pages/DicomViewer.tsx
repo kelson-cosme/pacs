@@ -1,7 +1,7 @@
 // src/pages/DicomViewer.tsx
 import { useEffect, useState } from 'react';
 
-// Define os tipos de dados que esperamos receber
+// Certifique-se de que esta interface corresponde à do AcessoRapido.tsx
 interface Study {
   ID: string;
   MainDicomTags: {
@@ -11,28 +11,30 @@ interface Study {
     PatientID: string;
     PatientBirthDate: string;
     AccessionNumber: string;
+    StudyInstanceUID: string; // <-- Certifique-se de que esta linha está aqui
   };
 }
 
 interface DicomViewerProps {
   study: Study;
-  onClose: () => void; // Função para voltar à tela de busca
+  onClose: () => void;
 }
 
 export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    // IMPORTANTE: Use a URL pública do seu ngrok aqui!
-    // A URL deve apontar para o seu Orthanc, não para localhost.
-    const publicOrthancUrl = 'https://859fedbb7a35.ngrok-free.app'; // ex: https://random-word-123.ngrok-free.app
+    // A sua URL pública do ngrok
+    const publicOrthancUrl = 'https://859fedbb7a35.ngrok-free.app'; 
 
-    // O Orthanc gera um ID único para o estudo, que está na propriedade "ID"
-    const studyInstanceUID = study.ID;
+    // **CORREÇÃO PRINCIPAL AQUI**
+    // Pegamos o StudyInstanceUID diretamente das tags do DICOM
+    const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-    // Montamos a URL do iframe para o OHIF Viewer
-    setViewerUrl(`${publicOrthancUrl}/web-viewer/app/viewer.html?study=${studyInstanceUID}`);
-  }, [study.ID]);
+    // Montamos a URL que sabemos que funciona
+    setViewerUrl(`${publicOrthancUrl}/ohif/viewer?StudyInstanceUIDs=${studyInstanceUID}`);
+
+  }, [study]); // Atualizado para depender do objeto de estudo completo
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
@@ -56,10 +58,6 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
               <p>{study.MainDicomTags.PatientName}</p>
             </div>
             <div>
-              <label className="font-bold text-gray-400">ID do Paciente:</label>
-              <p>{study.MainDicomTags.PatientID}</p>
-            </div>
-            <div>
               <label className="font-bold text-gray-400">Data de Nascimento:</label>
               <p>{study.MainDicomTags.PatientBirthDate}</p>
             </div>
@@ -75,10 +73,14 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
               <label className="font-bold text-gray-400">Data do Exame:</label>
               <p>{study.MainDicomTags.StudyDate}</p>
             </div>
+             <div>
+              <label className="font-bold text-gray-400">ID do Estudo (DICOM):</label>
+              <p className="break-all">{study.MainDicomTags.StudyInstanceUID}</p>
+            </div>
           </div>
         </aside>
 
-        {/* Área Principal com a Imagem do Exame (OHIF Viewer) */}
+        {/* Área Principal com o iframe */}
         <section className="flex-1 w-3/4 bg-black">
           {viewerUrl ? (
             <iframe

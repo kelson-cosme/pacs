@@ -32,7 +32,11 @@ serve(async (req) => {
   const ORTHANC_PASS = Deno.env.get('ORTHANC_PASS')!
   const orthancAuth = 'Basic ' + btoa(`${ORTHANC_USER}:${ORTHANC_PASS}`);
 
-  const orthancResponse = await fetch(`${ORTHANC_URL}/patients/${orthancPatientId}/studies`);
+const orthancResponse = await fetch(`${ORTHANC_URL}/patients/${orthancPatientId}/studies`, {
+  headers: {
+    'Authorization': orthancAuth
+  }
+})
   
   if (!orthancResponse.ok) {
      return new Response(JSON.stringify({ error: 'Falha ao buscar exames no Orthanc' }), { status: 500 })

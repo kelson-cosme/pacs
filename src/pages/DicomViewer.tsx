@@ -23,19 +23,14 @@ interface DicomViewerProps {
 export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
-  useEffect(() => {
-    // A sua URL pública do ngrok
-    const publicOrthancUrl = 'https://859fedbb7a35.ngrok-free.app'; 
+useEffect(() => {
+  const publicOrthancUrl = 'https://20ce0d1816ee.ngrok-free.app'; 
 
-    // **CORREÇÃO PRINCIPAL AQUI**
-    // Pegamos o StudyInstanceUID diretamente das tags do DICOM
-    const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
+  const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-    // Montamos a URL que sabemos que funciona
-    setViewerUrl(`${publicOrthancUrl}/ohif/viewer?StudyInstanceUIDs=${studyInstanceUID}`);
+  setViewerUrl(`${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}`);
 
-  }, [study]); // Atualizado para depender do objeto de estudo completo
-
+}, [study]);
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">

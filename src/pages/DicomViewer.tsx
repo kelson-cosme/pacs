@@ -24,7 +24,7 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
 useEffect(() => {
-  const publicOrthancUrl = 'http://31.97.240.48:8042'; 
+  const publicOrthancUrl = 'https://orthanc.kemax.com.br'; 
 
   const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 

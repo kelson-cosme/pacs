@@ -1,7 +1,7 @@
 // src/pages/DicomViewer.tsx
 import { useEffect, useState } from 'react';
 
-// Certifique-se de que esta interface corresponde à do AcessoRapido.tsx
+// A interface agora inclui o token temporário
 interface Study {
   ID: string;
   MainDicomTags: {
@@ -11,8 +11,9 @@ interface Study {
     PatientID: string;
     PatientBirthDate: string;
     AccessionNumber: string;
-    StudyInstanceUID: string; // <-- Certifique-se de que esta linha está aqui
+    StudyInstanceUID: string;
   };
+  TemporaryToken: string; // <-- Adicionamos esta propriedade
 }
 
 interface DicomViewerProps {
@@ -23,14 +24,22 @@ interface DicomViewerProps {
 export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
-useEffect(() => {
-  const publicOrthancUrl = 'https://orthanc.kemax.com.br'; 
+  useEffect(() => {
+    // URL pública do seu Orthanc
+    const publicOrthancUrl = 'https://orthanc.kemax.com.br'; 
 
-  const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
+    // O StudyInstanceUID identifica o estudo
+    const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-  setViewerUrl(`${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}`);
+    // O token temporário que dá acesso
+    const temporaryToken = study.TemporaryToken;
 
-}, [study]);
+    // Montamos a URL do visualizador com o token de autorização
+    // O token é passado como um parâmetro na URL
+    setViewerUrl(`${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}&token=${temporaryToken}`);
+
+  }, [study]);
+  
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">

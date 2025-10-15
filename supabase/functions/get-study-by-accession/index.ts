@@ -8,22 +8,13 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log("Função 'get-study-by-accession' foi chamada.");
-
   if (req.method === 'OPTIONS') {
-    console.log("A responder ao pedido OPTIONS (CORS).");
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // LOG 1: Vamos ver o que o frontend está a enviar
     const body = await req.json();
-    console.log("Corpo (body) do pedido recebido:", body);
-
     const { accessionNumber, birthDate } = body;
-
-    // LOG 2: Verificar se os dados foram extraídos corretamente
-    console.log(`Dados extraídos: AccessionNumber = ${accessionNumber}, BirthDate = ${birthDate}`);
 
     if (!accessionNumber || !birthDate) {
       throw new Error("Número de Acesso e Data de Nascimento são obrigatórios.");
@@ -31,29 +22,22 @@ serve(async (req) => {
 
     const formattedBirthDate = birthDate.replace(/-/g, '');
 
-    // LOG 3: Verificar a data formatada
-    console.log("Data de Nascimento formatada para o padrão DICOM:", formattedBirthDate);
-
     const ORTHANC_URL = Deno.env.get('ORTHANC_API_URL')!
     const ORTHANC_USER = Deno.env.get('ORTHANC_USER')!
     const ORTHANC_PASS = Deno.env.get('ORTHANC_PASS')!
     const orthancAuth = 'Basic ' + btoa(`${ORTHANC_USER}:${ORTHANC_PASS}`);
 
-    const orthancFindPayload = {
-      "Level": "Study",
-      "Query": {
-        "AccessionNumber": accessionNumber,
-        "PatientBirthDate": formattedBirthDate
-      }
-    };
-
-    // LOG 4: Verificar o que vamos enviar para o Orthanc
-    console.log("A enviar o seguinte pedido para o Orthanc:", JSON.stringify(orthancFindPayload, null, 2));
-
+    // 1. Encontrar o ID do estudo no Orthanc
     const findResponse = await fetch(`${ORTHANC_URL}/tools/find`, {
       method: 'POST',
       headers: { 'Authorization': orthancAuth, 'Content-Type': 'application/json' },
-      body: JSON.stringify(orthancFindPayload)
+      body: JSON.stringify({
+        "Level": "Study",
+        "Query": {
+          "AccessionNumber": accessionNumber,
+          "PatientBirthDate": formattedBirthDate
+        }
+      })
     });
 
     if (!findResponse.ok) {
@@ -61,40 +45,58 @@ serve(async (req) => {
     }
 
     const searchResults = await findResponse.json();
-    console.log("Resultados da busca no Orthanc:", searchResults);
 
-    if (searchResults.length === 1) {
-      const studyId = searchResults[0];
-      const studyDetailsResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}`, { 
-        headers: { 'Authorization': orthancAuth }
-      });
-
-      if (!studyDetailsResponse.ok) {
-        throw new Error('Não foi possível obter os detalhes do exame.');
-      }
-
-      const studyDetails = await studyDetailsResponse.json();
-      console.log("Exame encontrado. A devolver detalhes.");
-
-      return new Response(JSON.stringify(studyDetails), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      });
-
-    } else {
-      console.log("Nenhum exame correspondente encontrado.");
+    if (searchResults.length !== 1) {
       return new Response(JSON.stringify({ error: "Exame não encontrado ou dados incorretos." }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 404,
       });
     }
 
+    const studyId = searchResults[0];
+
+    // 2. Obter os detalhes do estudo
+    const studyDetailsResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}`, { 
+      headers: { 'Authorization': orthancAuth }
+    });
+
+    if (!studyDetailsResponse.ok) {
+      throw new Error('Não foi possível obter os detalhes do exame.');
+    }
+    const studyDetails = await studyDetailsResponse.json();
+
+    // 3. NOVO: Gerar um token de acesso temporário para o estudo
+    const shareResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}/share`, {
+        method: 'POST',
+        headers: { 'Authorization': orthancAuth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            "Expire": 3600 // O token expira em 1 hora (3600 segundos)
+        })
+    });
+    
+    if (!shareResponse.ok) {
+        throw new Error('Não foi possível gerar o link de visualização seguro.');
+    }
+
+    const shareData = await shareResponse.json();
+    const temporaryToken = shareData.Token;
+
+    // 4. Adicionar o token ao objeto de detalhes do estudo
+    const responsePayload = {
+        ...studyDetails,
+        TemporaryToken: temporaryToken // Enviamos o token para o frontend
+    };
+
+    return new Response(JSON.stringify(responsePayload), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+
   } catch (err) {
-    // LOG 5: Capturar e mostrar qualquer erro que aconteça
     console.error("ERRO DENTRO DA FUNÇÃO:", err);
     return new Response(String(err?.message ?? err), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400, // Retorna 400 em caso de erro no processamento
+      status: 400,
     })
   }
 })

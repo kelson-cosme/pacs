@@ -16,7 +16,7 @@ interface Study {
     AccessionNumber: string;
     StudyInstanceUID: string;
   };
-  Series: string[];
+  TemporaryToken: string; // <-- Adicionamos esta propriedade
 }
 
 export default function AcessoRapido() {

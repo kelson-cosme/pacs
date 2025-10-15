@@ -14,6 +14,7 @@ interface Study {
     PatientID: string;
     PatientBirthDate: string;
     AccessionNumber: string;
+    StudyInstanceUID: string;
   };
   Series: string[];
 }

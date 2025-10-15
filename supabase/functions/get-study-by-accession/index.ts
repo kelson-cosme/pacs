@@ -28,63 +28,58 @@ serve(async (req) => {
     const orthancAuth = 'Basic ' + btoa(`${ORTHANC_USER}:${ORTHANC_PASS}`);
 
     // 1. Encontrar o ID do estudo no Orthanc
+    console.log("A procurar estudo...");
     const findResponse = await fetch(`${ORTHANC_URL}/tools/find`, {
       method: 'POST',
       headers: { 'Authorization': orthancAuth, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         "Level": "Study",
-        "Query": {
-          "AccessionNumber": accessionNumber,
-          "PatientBirthDate": formattedBirthDate
-        }
+        "Query": { "AccessionNumber": accessionNumber, "PatientBirthDate": formattedBirthDate }
       })
     });
 
     if (!findResponse.ok) {
-      throw new Error(`Falha na comunicação com o servidor de exames. Status: ${findResponse.status}`);
+      throw new Error(`Falha na busca no Orthanc. Status: ${findResponse.status}`);
     }
-
     const searchResults = await findResponse.json();
 
     if (searchResults.length !== 1) {
-      return new Response(JSON.stringify({ error: "Exame não encontrado ou dados incorretos." }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
-      });
+      return new Response(JSON.stringify({ error: "Exame não encontrado." }), { status: 404, headers: corsHeaders });
     }
-
     const studyId = searchResults[0];
+    console.log(`Estudo encontrado: ${studyId}`);
 
-    // 2. Obter os detalhes do estudo
-    const studyDetailsResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}`, { 
-      headers: { 'Authorization': orthancAuth }
-    });
-
+    // 2. Obter detalhes do estudo
+    const studyDetailsResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}`, { headers: { 'Authorization': orthancAuth } });
     if (!studyDetailsResponse.ok) {
       throw new Error('Não foi possível obter os detalhes do exame.');
     }
     const studyDetails = await studyDetailsResponse.json();
 
-    // 3. NOVO: Gerar um token de acesso temporário para o estudo
+    // 3. TENTAR GERAR O TOKEN DE ACESSO
+    console.log("A tentar gerar o token para o estudo...");
     const shareResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}/share`, {
         method: 'POST',
         headers: { 'Authorization': orthancAuth, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            "Expire": 3600 // O token expira em 1 hora (3600 segundos)
-        })
+        body: JSON.stringify({ "Expire": 3600 })
     });
-    
+
+    // ***** INÍCIO DA DEPURAÇÃO *****
+    console.log(`Resposta do Orthanc para /share: Status = ${shareResponse.status}`);
+    const shareData = await shareResponse.json();
+    console.log("Corpo (body) da resposta do Orthanc para /share:", JSON.stringify(shareData, null, 2));
+    // ***** FIM DA DEPURAÇÃO *****
+
     if (!shareResponse.ok) {
-        throw new Error('Não foi possível gerar o link de visualização seguro.');
+        throw new Error('O servidor Orthanc não conseguiu gerar o link de visualização.');
     }
 
-    const shareData = await shareResponse.json();
-    const temporaryToken = shareData.Token;
+    const temporaryToken = shareData.Token; // O problema está aqui, "Token" está a vir como undefined
+    console.log(`Token recebido: ${temporaryToken}`);
 
-    // 4. Adicionar o token ao objeto de detalhes do estudo
     const responsePayload = {
         ...studyDetails,
-        TemporaryToken: temporaryToken // Enviamos o token para o frontend
+        TemporaryToken: temporaryToken
     };
 
     return new Response(JSON.stringify(responsePayload), {
@@ -93,7 +88,7 @@ serve(async (req) => {
     });
 
   } catch (err) {
-    console.error("ERRO DENTRO DA FUNÇÃO:", err);
+    console.error("ERRO DENTRO DA FUNÇÃO SUPABASE:", err);
     return new Response(String(err?.message ?? err), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

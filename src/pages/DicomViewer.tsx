@@ -34,14 +34,14 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
     // O token temporário que dá acesso
     const temporaryToken = study.TemporaryToken;
 
-    // Montamos a URL do visualizador com o token de autorização
-    // O token é passado como um parâmetro na URL
-    setViewerUrl(`${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}&token=${temporaryToken}`);
+    // AQUI ESTÁ A CORREÇÃO: trocamos 'token' por 'auth-token'
+    setViewerUrl(`${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}&auth-token=${temporaryToken}`);
 
   }, [study]);
   
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+      {/* O resto do seu componente permanece igual */}
       <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">
         <h1 className="text-xl font-bold">Visualizador de Exames</h1>
         <button

@@ -24,7 +24,7 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
 useEffect(() => {
-  const publicOrthancUrl = 'https://20ce0d1816ee.ngrok-free.app'; 
+  const publicOrthancUrl = 'http://31.97.240.48:8042'; 
 
   const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 

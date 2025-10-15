@@ -34,9 +34,8 @@ export default function AcessoRapido() {
 
     try {
       const { data, error } = await supabase.functions.invoke('get-study-by-accession', {
-        body: { accessionNumber, birthDate },
+        body: JSON.stringify({ accessionNumber, birthDate }),
       });
-
       if (error) {
         throw new Error(data?.error || error.message);
       }

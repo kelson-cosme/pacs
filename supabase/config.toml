@@ -359,7 +359,7 @@ entrypoint = "./functions/get-orthanc-studies/index.ts"
 
 [functions.get-study-by-accession]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/get-study-by-accession/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

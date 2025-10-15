@@ -2,29 +2,38 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-// Função CORS para permitir que o seu site chame a função
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req) => {
-  // Responde a pedidos OPTIONS para o CORS
+  console.log("Função 'get-study-by-accession' foi chamada.");
+
   if (req.method === 'OPTIONS') {
+    console.log("A responder ao pedido OPTIONS (CORS).");
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // 1. Extrai os dados enviados pelo frontend
-    const { accessionNumber, birthDate } = await req.json();
+    // LOG 1: Vamos ver o que o frontend está a enviar
+    const body = await req.json();
+    console.log("Corpo (body) do pedido recebido:", body);
+
+    const { accessionNumber, birthDate } = body;
+
+    // LOG 2: Verificar se os dados foram extraídos corretamente
+    console.log(`Dados extraídos: AccessionNumber = ${accessionNumber}, BirthDate = ${birthDate}`);
+
     if (!accessionNumber || !birthDate) {
       throw new Error("Número de Acesso e Data de Nascimento são obrigatórios.");
     }
 
-    // Formata a data para o padrão DICOM (AAAAMMDD)
     const formattedBirthDate = birthDate.replace(/-/g, '');
 
-    // 2. Prepara a chamada para a API do Orthanc
+    // LOG 3: Verificar a data formatada
+    console.log("Data de Nascimento formatada para o padrão DICOM:", formattedBirthDate);
+
     const ORTHANC_URL = Deno.env.get('ORTHANC_API_URL')!
     const ORTHANC_USER = Deno.env.get('ORTHANC_USER')!
     const ORTHANC_PASS = Deno.env.get('ORTHANC_PASS')!
@@ -38,27 +47,24 @@ serve(async (req) => {
       }
     };
 
-    // 3. Executa a busca no Orthanc (/tools/find)
+    // LOG 4: Verificar o que vamos enviar para o Orthanc
+    console.log("A enviar o seguinte pedido para o Orthanc:", JSON.stringify(orthancFindPayload, null, 2));
+
     const findResponse = await fetch(`${ORTHANC_URL}/tools/find`, {
       method: 'POST',
-      headers: {
-        'Authorization': orthancAuth,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': orthancAuth, 'Content-Type': 'application/json' },
       body: JSON.stringify(orthancFindPayload)
     });
 
     if (!findResponse.ok) {
-      throw new Error('Falha na comunicação com o servidor de exames.');
+      throw new Error(`Falha na comunicação com o servidor de exames. Status: ${findResponse.status}`);
     }
 
     const searchResults = await findResponse.json();
+    console.log("Resultados da busca no Orthanc:", searchResults);
 
-    // 4. Valida o resultado e busca os detalhes do estudo
     if (searchResults.length === 1) {
       const studyId = searchResults[0];
-
-      // Busca os detalhes completos do estudo encontrado
       const studyDetailsResponse = await fetch(`${ORTHANC_URL}/studies/${studyId}`, { 
         headers: { 'Authorization': orthancAuth }
       });
@@ -68,15 +74,15 @@ serve(async (req) => {
       }
 
       const studyDetails = await studyDetailsResponse.json();
+      console.log("Exame encontrado. A devolver detalhes.");
 
-      // 5. Retorna os detalhes do exame para o frontend
       return new Response(JSON.stringify(studyDetails), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
 
     } else {
-      // Se não encontrou exatamente 1 resultado, retorna erro 404
+      console.log("Nenhum exame correspondente encontrado.");
       return new Response(JSON.stringify({ error: "Exame não encontrado ou dados incorretos." }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 404,
@@ -84,9 +90,11 @@ serve(async (req) => {
     }
 
   } catch (err) {
+    // LOG 5: Capturar e mostrar qualquer erro que aconteça
+    console.error("ERRO DENTRO DA FUNÇÃO:", err);
     return new Response(String(err?.message ?? err), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 400, // Retorna 400 em caso de erro no processamento
     })
   }
 })

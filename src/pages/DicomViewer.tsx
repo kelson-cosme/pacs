@@ -29,12 +29,12 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
       // URL base do seu servidor Orthanc
       const publicOrthancUrl = 'https://orthanc.kemax.com.br';
       
-      // O token temporário que a sua Supabase Function gerou
+      // O token temporário
       const token = study.TemporaryToken;
 
-      // ✅ ALTERAÇÃO FINAL: A URL correta para o Stone Viewer
-      // Geralmente é o endpoint "/stone/" seguido do token.
-      const finalViewerUrl = `${publicOrthancUrl}/stone/?token=${token}`;
+      // ✅ ALTERAÇÃO FINAL E MAIS PROVÁVEL:
+      // Usando o caminho "/stone-webviewer/" que é o mais comum.
+      const finalViewerUrl = `${publicOrthancUrl}/stone-webviewer/index.html?token=${token}`;
       
       setViewerUrl(finalViewerUrl);
     }

@@ -29,15 +29,13 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
       // URL base do seu servidor Orthanc
       const publicOrthancUrl = 'https://orthanc.kemax.com.br';
       
-      // O token temporário que a sua Supabase Function gerou com sucesso
+      // O token temporário que a sua Supabase Function gerou
       const token = study.TemporaryToken;
-      
-      // O identificador único do exame que queremos carregar
-      const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-      // ✅ A URL CORRETA PARA A SUA CONFIGURAÇÃO:
-      // Passa o token para o DICOMweb e especifica o estudo a ser aberto.
-      const finalViewerUrl = `${publicOrthancUrl}/ohif/viewer?dicomweb_token=${token}&studyInstanceUIDs=${studyInstanceUID}`;
+      // ✅ ALTERAÇÃO: URL ajustada para o Stone Web Viewer
+      // O Stone Viewer geralmente precisa apenas do token, pois o estudo já está
+      // codificado dentro dele pela sua Supabase Function.
+      const finalViewerUrl = `${publicOrthancUrl}/stone-viewer/index.html?token=${token}`;
       
       setViewerUrl(finalViewerUrl);
     }

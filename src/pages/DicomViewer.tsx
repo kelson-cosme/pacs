@@ -25,22 +25,22 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    // URL base do seu servidor Orthanc
-    const publicOrthancUrl = 'https://orthanc.kemax.com.br';
-    
-    // O token temporário recebido da sua Supabase Function
-    const token = study.TemporaryToken;
-    
-    // O UID do estudo que queremos carregar
-    const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
+    if (study) {
+      // URL base do seu servidor Orthanc
+      const publicOrthancUrl = 'https://orthanc.kemax.com.br';
+      
+      // O token temporário que a sua Supabase Function gerou com sucesso
+      const token = study.TemporaryToken;
+      
+      // O identificador único do exame que queremos carregar
+      const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-    // ✅ CORREÇÃO FINAL: Esta é a URL que o plugin OHIF do Orthanc espera.
-    // Ela instrui o OHIF a usar o token fornecido para todas as futuras
-    // requisições à API DICOMweb para buscar as imagens.
-    const ohifViewerUrl = `${publicOrthancUrl}/ohif/viewer/${studyInstanceUID}?token=${token}`;
-
-    setViewerUrl(ohifViewerUrl);
-
+      // ✅ A URL CORRETA PARA A SUA CONFIGURAÇÃO:
+      // Passa o token para o DICOMweb e especifica o estudo a ser aberto.
+      const finalViewerUrl = `${publicOrthancUrl}/ohif/viewer?dicomweb_token=${token}&studyInstanceUIDs=${studyInstanceUID}`;
+      
+      setViewerUrl(finalViewerUrl);
+    }
   }, [study]);
 
   return (
@@ -58,7 +58,6 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
       <main className="flex flex-1 overflow-hidden">
         <aside className="w-1/4 bg-gray-800 p-4 overflow-y-auto">
           <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">Detalhes do Estudo</h2>
-          {/* ... o resto do seu código JSX que mostra os detalhes ... */}
           <div className="space-y-2 text-sm">
             <div>
               <label className="font-bold text-gray-400">Paciente:</label>

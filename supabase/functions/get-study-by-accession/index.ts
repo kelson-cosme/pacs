@@ -1,89 +1,86 @@
-// supabase/functions/get-study-by-accession/index.ts
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { create, getNumericDate, Header, Payload } from "https://deno.land/x/djwt@v2.9/mod.ts"
 
-const ORTHANC_URL = Deno.env.get("ORTHANC_URL") || "https://orthanc.kemax.com.br";
-const ORTHANC_USER = Deno.env.get("ORTHANC_USER") || "admin";
-const ORTHANC_PASSWORD = Deno.env.get("ORTHANC_PASSWORD") || "admin123";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-function getAuthHeader() {
-  const token = btoa(`${ORTHANC_USER}:${ORTHANC_PASSWORD}`);
-  return { Authorization: `Basic ${token}` };
-}
+const ORTHANC_URL = Deno.env.get("ORTHANC_API_URL")!
+const ORTHANC_USER = Deno.env.get("ORTHANC_USER")!
+const ORTHANC_PASS = Deno.env.get("ORTHANC_PASS")!
+const ORTHANC_SECRET = Deno.env.get("ORTHANC_SHARED_SECRET")!
+const ORTHANC_VIEWER_URL = Deno.env.get("ORTHANC_VIEWER_URL")!
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  // 🔹 Trata requisições CORS prévias
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "https://portal-exames.vercel.app",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    })
   }
 
   try {
-    const contentLength = req.headers.get('content-length');
-    if (!contentLength || contentLength === '0') {
-      return new Response(JSON.stringify({ error: 'O corpo do pedido está vazio.' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const body = await req.json();
-    const { accessionNumber, birthDate } = body;
+    const { access_number, birth_date } = await req.json()
 
-    if (!accessionNumber || !birthDate) {
-      return new Response(JSON.stringify({ error: "Número de acesso e data de nascimento são obrigatórios." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    
-    const formattedBirthDate = birthDate.replaceAll("-", "");
-    const findPayload = {
-      Level: "Study",
-      Query: { AccessionNumber: accessionNumber, PatientBirthDate: formattedBirthDate },
-    };
-
-    const findResp = await fetch(`${ORTHANC_URL}/tools/find`, {
+    // 🔍 Consulta o Orthanc
+    const findResponse = await fetch(`${ORTHANC_URL}/tools/find`, {
       method: "POST",
-      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify(findPayload),
-    });
-    if (!findResp.ok) throw new Error(`Erro ao procurar no Orthanc: ${findResp.statusText}`);
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Basic " + btoa(`${ORTHANC_USER}:${ORTHANC_PASS}`),
+      },
+      body: JSON.stringify({
+        Level: "Study",
+        Query: {
+          AccessionNumber: access_number,
+          PatientBirthDate: birth_date.replace(/-/g, ""),
+        },
+      }),
+    })
 
-    const studyIDs: string[] = await findResp.json();
-    if (studyIDs.length === 0) {
-      return new Response(JSON.stringify({ error: "Nenhum exame encontrado com esses dados." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    
-    const studyId = studyIDs[0];
-    const studyResp = await fetch(`${ORTHANC_URL}/studies/${studyId}`, { headers: getAuthHeader() });
-    if (!studyResp.ok) throw new Error(`Erro ao obter detalhes do estudo ${studyId}`);
-    const foundStudy = await studyResp.json();
-
-    const tokenResp = await fetch(`${ORTHANC_URL}/authorization/token`, {
-      method: "POST",
-      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({ "Resources": [foundStudy.ID], "ValiditySeconds": 1800, "Access": "ReadOnly" }),
-    });
-
-    const tokenData = await tokenResp.json();
-    
-    // ✅ NOVO: Log para depuração e verificação robusta do token
-    console.log("Resposta da geração de token do Orthanc:", tokenData);
-    const temporaryToken = tokenData.Token || tokenData.Id;
-
-    if (!temporaryToken) {
-      throw new Error("Falha ao gerar o token de acesso no Orthanc. A resposta não continha um token.");
+    const studies = await findResponse.json()
+    if (!Array.isArray(studies) || studies.length === 0) {
+      return new Response(JSON.stringify({ error: "Exame não encontrado" }), {
+        status: 404,
+        headers: { "Access-Control-Allow-Origin": "https://portal-exames.vercel.app" },
+      })
     }
 
-    const responseBody = { ...foundStudy, TemporaryToken: temporaryToken };
-    
-    return new Response(JSON.stringify(responseBody), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
-    
+    const studyId = studies[0]
+    const studyResp = await fetch(`${ORTHANC_URL}/studies/${studyId}`, {
+      headers: { "Authorization": "Basic " + btoa(`${ORTHANC_USER}:${ORTHANC_PASS}`) },
+    })
+    const studyData = await studyResp.json()
+    const studyUID = studyData.MainDicomTags.StudyInstanceUID
+
+    // 🔐 Cria token JWT (djwt, compatível com Deno)
+    const header: Header = { alg: "HS256", typ: "JWT" }
+    const payload: Payload = {
+      study: studyUID,
+      exp: getNumericDate(60 * 5), // expira em 5 minutos
+    }
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(ORTHANC_SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign", "verify"],
+    )
+
+    const token = await create(header, payload, key)
+    const viewerUrl = `${ORTHANC_VIEWER_URL}/?token=${token}`
+
+    return new Response(JSON.stringify({ viewerUrl }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "https://portal-exames.vercel.app",
+      },
+    })
   } catch (error) {
-    console.error("Erro na function:", error);
+    console.error(error)
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
-    });
+      headers: { "Access-Control-Allow-Origin": "https://portal-exames.vercel.app" },
+    })
   }
-});
+})

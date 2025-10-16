@@ -22,33 +22,15 @@ serve(async (req) => {
   }
 
   try {
-    // ✅ 1. Verificação robusta do corpo do pedido
     const contentLength = req.headers.get('content-length');
     if (!contentLength || contentLength === '0') {
-      return new Response(
-        JSON.stringify({ error: 'O corpo do pedido está vazio.' }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: 'O corpo do pedido está vazio.' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    // ✅ 2. Tenta analisar o JSON dentro de um try/catch separado para um erro mais claro
-    let body;
-    try {
-        body = await req.json();
-    } catch (e) {
-        return new Response(
-            JSON.stringify({ error: 'Corpo do pedido inválido, não é um JSON válido.' }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-    }
-    
+    const body = await req.json();
     const { accessionNumber, birthDate } = body;
 
     if (!accessionNumber || !birthDate) {
-      return new Response(
-        JSON.stringify({ error: "Número de acesso e data de nascimento são obrigatórios." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Número de acesso e data de nascimento são obrigatórios." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     
     const formattedBirthDate = birthDate.replaceAll("-", "");
@@ -62,18 +44,11 @@ serve(async (req) => {
       headers: { ...getAuthHeader(), "Content-Type": "application/json" },
       body: JSON.stringify(findPayload),
     });
-    
-    if (!findResp.ok) {
-        throw new Error(`Erro ao procurar no Orthanc: ${findResp.statusText}`);
-    }
+    if (!findResp.ok) throw new Error(`Erro ao procurar no Orthanc: ${findResp.statusText}`);
 
     const studyIDs: string[] = await findResp.json();
-
     if (studyIDs.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Nenhum exame encontrado com esses dados." }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Nenhum exame encontrado com esses dados." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     
     const studyId = studyIDs[0];
@@ -84,18 +59,20 @@ serve(async (req) => {
     const tokenResp = await fetch(`${ORTHANC_URL}/authorization/token`, {
       method: "POST",
       headers: { ...getAuthHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        "Resources": [foundStudy.ID],
-        "ValiditySeconds": 60 * 30,
-        "Access": "ReadOnly",
-      }),
+      body: JSON.stringify({ "Resources": [foundStudy.ID], "ValiditySeconds": 1800, "Access": "ReadOnly" }),
     });
+
     const tokenData = await tokenResp.json();
     
-    const responseBody = {
-      ...foundStudy,
-      TemporaryToken: tokenData.Token || tokenData.Id || null,
-    };
+    // ✅ NOVO: Log para depuração e verificação robusta do token
+    console.log("Resposta da geração de token do Orthanc:", tokenData);
+    const temporaryToken = tokenData.Token || tokenData.Id;
+
+    if (!temporaryToken) {
+      throw new Error("Falha ao gerar o token de acesso no Orthanc. A resposta não continha um token.");
+    }
+
+    const responseBody = { ...foundStudy, TemporaryToken: temporaryToken };
     
     return new Response(JSON.stringify(responseBody), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

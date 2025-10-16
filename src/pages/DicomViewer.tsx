@@ -32,8 +32,7 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
     // setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
 
     // Nova linha para o teste com OHIF:
-    setViewerUrl(`${publicOrthancUrl}/ohif/viewer?token=${token}`);
-
+    setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
   }, [study]);
 
   return (

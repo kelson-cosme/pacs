@@ -13,7 +13,8 @@ interface Study {
     AccessionNumber: string;
     StudyInstanceUID: string;
   };
-  TemporaryToken: string;
+  // Embora não seja usado na URL, o token ainda é recebido da função
+  TemporaryToken: string; 
 }
 
 interface DicomViewerProps {
@@ -25,16 +26,15 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    if (study) {
-      // URL base do seu servidor Orthanc
-      const publicOrthancUrl = 'https://orthanc.kemax.com.br';
+    if (study && study.MainDicomTags && study.MainDicomTags.StudyInstanceUID) {
+      // Use a URL pública do seu servidor, como já está a fazer
+      const publicOrthancUrl = 'https://orthanc.kemax.com.br'; 
       
-      // O token temporário
-      const token = study.TemporaryToken;
+      const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-      // ✅ ALTERAÇÃO FINAL E MAIS PROVÁVEL:
-      // Usando o caminho "/stone-webviewer/" que é o mais comum.
-      const finalViewerUrl = `${publicOrthancUrl}/stone-webviewer/index.html?token=${token}`;
+      // ✅ A SOLUÇÃO FINAL: Construindo a URL exatamente como o link manual
+      // que você confirmou que funciona.
+      const finalViewerUrl = `${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}`;
       
       setViewerUrl(finalViewerUrl);
     }

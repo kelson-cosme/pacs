@@ -1,7 +1,6 @@
 // src/pages/DicomViewer.tsx
 import { useEffect, useState } from 'react';
 
-// A interface agora inclui o token temporário
 interface Study {
   ID: string;
   MainDicomTags: {
@@ -13,7 +12,7 @@ interface Study {
     AccessionNumber: string;
     StudyInstanceUID: string;
   };
-  TemporaryToken: string; // <-- Adicionamos esta propriedade
+  TemporaryToken: string;
 }
 
 interface DicomViewerProps {
@@ -25,23 +24,19 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    // URL pública do seu Orthanc
-    const publicOrthancUrl = 'https://orthanc.kemax.com.br'; 
+    // ✅ URL base do Orthanc (ajuste se usar domínio personalizado)
+    const publicOrthancUrl = 'https://orthanc.kemax.com.br';
 
-    // O StudyInstanceUID identifica o estudo
-    const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
+    // const { StudyInstanceUID } = study.MainDicomTags;
+    const token = study.TemporaryToken;
 
-    // O token temporário que dá acesso
-    const temporaryToken = study.TemporaryToken;
-
-    // AQUI ESTÁ A CORREÇÃO: trocamos 'token' por 'auth-token'
-    setViewerUrl(`${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}&auth-token=${temporaryToken}`);
-
+    // ✅ Correção: formato correto de acesso via token no Stone ou OHIF
+    // Teste o primeiro: /ui/app/token/<TOKEN>  (Stone)
+    setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
   }, [study]);
-  
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      {/* O resto do seu componente permanece igual */}
       <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">
         <h1 className="text-xl font-bold">Visualizador de Exames</h1>
         <button
@@ -51,9 +46,8 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
           Procurar Outro Exame
         </button>
       </header>
-      
+
       <main className="flex flex-1 overflow-hidden">
-        {/* Barra Lateral Esquerda (Leftbar) */}
         <aside className="w-1/4 bg-gray-800 p-4 overflow-y-auto">
           <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">Detalhes do Estudo</h2>
           <div className="space-y-2 text-sm">
@@ -77,23 +71,22 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
               <label className="font-bold text-gray-400">Data do Exame:</label>
               <p>{study.MainDicomTags.StudyDate}</p>
             </div>
-             <div>
+            <div>
               <label className="font-bold text-gray-400">ID do Estudo (DICOM):</label>
               <p className="break-all">{study.MainDicomTags.StudyInstanceUID}</p>
             </div>
           </div>
         </aside>
 
-        {/* Área Principal com o iframe */}
         <section className="flex-1 w-3/4 bg-black">
           {viewerUrl ? (
             <iframe
               src={viewerUrl}
               className="w-full h-full border-none"
-              title="OHIF DICOM Viewer"
+              title="Visualizador DICOM"
             />
           ) : (
-            <p>A carregar visualizador...</p>
+            <p className="text-center mt-10">A carregar visualizador...</p>
           )}
         </section>
       </main>

@@ -32,10 +32,9 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
       // O token temporário que a sua Supabase Function gerou
       const token = study.TemporaryToken;
 
-      // ✅ ALTERAÇÃO: URL ajustada para o Stone Web Viewer
-      // O Stone Viewer geralmente precisa apenas do token, pois o estudo já está
-      // codificado dentro dele pela sua Supabase Function.
-      const finalViewerUrl = `${publicOrthancUrl}/stone-viewer/index.html?token=${token}`;
+      // ✅ ALTERAÇÃO FINAL: A URL correta para o Stone Viewer
+      // Geralmente é o endpoint "/stone/" seguido do token.
+      const finalViewerUrl = `${publicOrthancUrl}/stone/?token=${token}`;
       
       setViewerUrl(finalViewerUrl);
     }

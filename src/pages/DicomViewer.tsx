@@ -1,4 +1,5 @@
 // src/pages/DicomViewer.tsx
+
 import { useEffect, useState } from 'react';
 
 interface Study {
@@ -24,15 +25,15 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    const publicOrthancUrl = 'https://orthanc.kemax.com.br';
+    // URL base do seu visualizador (OHIF ou Stone)
+    const viewerBaseUrl = 'https://orthanc.kemax.com.br/ohif/viewer'; // ou '/stone-viewer' se preferir o Stone
+    
+    // O token temporário recebido da sua Supabase Function
     const token = study.TemporaryToken;
 
-    // ✅ ALTERAÇÃO PARA TESTE: Troque a linha do Stone pela linha do OHIF
-    // Linha original (comente ou apague): 
-    // setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
+    // ✅ CORREÇÃO: A URL correta usa "?token=" como parâmetro de busca
+    setViewerUrl(`${viewerBaseUrl}?token=${token}`);
 
-    // Nova linha para o teste com OHIF:
-    setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
   }, [study]);
 
   return (

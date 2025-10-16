@@ -24,15 +24,16 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    // ✅ URL base do Orthanc (ajuste se usar domínio personalizado)
     const publicOrthancUrl = 'https://orthanc.kemax.com.br';
-
-    // const { StudyInstanceUID } = study.MainDicomTags;
     const token = study.TemporaryToken;
 
-    // ✅ Correção: formato correto de acesso via token no Stone ou OHIF
-    // Teste o primeiro: /ui/app/token/<TOKEN>  (Stone)
-    setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
+    // ✅ ALTERAÇÃO PARA TESTE: Troque a linha do Stone pela linha do OHIF
+    // Linha original (comente ou apague): 
+    // setViewerUrl(`${publicOrthancUrl}/ui/app/token/${token}`);
+
+    // Nova linha para o teste com OHIF:
+    setViewerUrl(`${publicOrthancUrl}/ohif/viewer?token=${token}`);
+
   }, [study]);
 
   return (

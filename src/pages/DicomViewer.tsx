@@ -25,14 +25,21 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
   const [viewerUrl, setViewerUrl] = useState('');
 
   useEffect(() => {
-    // URL base do seu visualizador (OHIF ou Stone)
-    const viewerBaseUrl = 'https://orthanc.kemax.com.br/ohif/viewer'; // ou '/stone-viewer' se preferir o Stone
+    // URL base do seu servidor Orthanc
+    const publicOrthancUrl = 'https://orthanc.kemax.com.br';
     
     // O token temporário recebido da sua Supabase Function
     const token = study.TemporaryToken;
+    
+    // O UID do estudo que queremos carregar
+    const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
 
-    // ✅ CORREÇÃO: A URL correta usa "?token=" como parâmetro de busca
-    setViewerUrl(`${viewerBaseUrl}?token=${token}`);
+    // ✅ CORREÇÃO FINAL: Esta é a URL que o plugin OHIF do Orthanc espera.
+    // Ela instrui o OHIF a usar o token fornecido para todas as futuras
+    // requisições à API DICOMweb para buscar as imagens.
+    const ohifViewerUrl = `${publicOrthancUrl}/ohif/viewer/${studyInstanceUID}?token=${token}`;
+
+    setViewerUrl(ohifViewerUrl);
 
   }, [study]);
 
@@ -51,6 +58,7 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
       <main className="flex flex-1 overflow-hidden">
         <aside className="w-1/4 bg-gray-800 p-4 overflow-y-auto">
           <h2 className="text-lg font-semibold mb-4 border-b border-gray-600 pb-2">Detalhes do Estudo</h2>
+          {/* ... o resto do seu código JSX que mostra os detalhes ... */}
           <div className="space-y-2 text-sm">
             <div>
               <label className="font-bold text-gray-400">Paciente:</label>

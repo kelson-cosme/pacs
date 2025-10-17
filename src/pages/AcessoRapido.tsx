@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import DicomViewer from './DicomViewer';
 
-interface Study {
+// Tipos para os dados do estudo e da resposta da função
+interface StudyData {
   ID: string;
   MainDicomTags: {
     StudyDescription: string;
@@ -14,7 +15,11 @@ interface Study {
     AccessionNumber: string;
     StudyInstanceUID: string;
   };
-  TemporaryToken: string;
+}
+
+interface ApiResponse {
+  studyData: StudyData;
+  viewerUrl: string;
 }
 
 export default function AcessoRapido() {
@@ -22,30 +27,31 @@ export default function AcessoRapido() {
   const [birthDate, setBirthDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [foundStudy, setFoundStudy] = useState<Study | null>(null);
+  // O estado agora armazena a resposta completa da API
+  const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
 
   const handleSearch = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setErrorMsg(null);
-    setFoundStudy(null);
+    setApiResponse(null);
 
     try {
-      // 🚀 Corrigido: body já é passado como objeto no invoke()
       const { data, error } = await supabase.functions.invoke('get-study-by-accession', {
         body: { accessionNumber, birthDate },
       });
 
-      if (error || !data) {
-        throw new Error(data?.error || error?.message || 'Erro desconhecido ao buscar exame.');
+      if (error) {
+        // Erros da própria chamada da função (ex: 500, 401)
+        throw new Error(error.message);
       }
-
-      // Se o Orthanc retornar erro
+      
       if (data.error) {
+        // Erros de negócio retornados pela nossa lógica (ex: "Exame não encontrado")
         throw new Error(data.error);
       }
 
-      setFoundStudy(data);
+      setApiResponse(data as ApiResponse);
 
     } catch (error: any) {
       console.error(error);
@@ -55,10 +61,18 @@ export default function AcessoRapido() {
     }
   };
 
-  if (foundStudy) {
-    return <DicomViewer study={foundStudy} onClose={() => setFoundStudy(null)} />;
+  // Se tivermos uma resposta da API, renderizamos o DicomViewer
+  if (apiResponse) {
+    return (
+        <DicomViewer 
+            study={apiResponse.studyData} 
+            viewerUrl={apiResponse.viewerUrl}
+            onClose={() => setApiResponse(null)} 
+        />
+    );
   }
 
+  // Senão, mostramos o formulário de busca
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col justify-center items-center">
       <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-lg">

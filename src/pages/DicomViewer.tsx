@@ -1,7 +1,5 @@
 // src/pages/DicomViewer.tsx
 
-import { useEffect, useState } from 'react';
-
 interface Study {
   ID: string;
   MainDicomTags: {
@@ -13,33 +11,16 @@ interface Study {
     AccessionNumber: string;
     StudyInstanceUID: string;
   };
-  // Embora não seja usado na URL, o token ainda é recebido da função
-  TemporaryToken: string; 
 }
 
+// O componente agora recebe a URL do viewer pronta
 interface DicomViewerProps {
   study: Study;
+  viewerUrl: string; // <-- A URL final é passada como prop
   onClose: () => void;
 }
 
-export default function DicomViewer({ study, onClose }: DicomViewerProps) {
-  const [viewerUrl, setViewerUrl] = useState('');
-
-  useEffect(() => {
-    if (study && study.MainDicomTags && study.MainDicomTags.StudyInstanceUID) {
-      // Use a URL pública do seu servidor, como já está a fazer
-      const publicOrthancUrl = 'https://orthanc.kemax.com.br'; 
-      
-      const studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
-
-      // ✅ A SOLUÇÃO FINAL: Construindo a URL exatamente como o link manual
-      // que você confirmou que funciona.
-      const finalViewerUrl = `${publicOrthancUrl}/stone-webviewer/index.html?study=${studyInstanceUID}`;
-      
-      setViewerUrl(finalViewerUrl);
-    }
-  }, [study]);
-
+export default function DicomViewer({ study, viewerUrl, onClose }: DicomViewerProps) {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <header className="bg-gray-800 p-4 shadow-md flex justify-between items-center">
@@ -61,8 +42,9 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
               <p>{study.MainDicomTags.PatientName}</p>
             </div>
             <div>
-              <label className="font-bold text-gray-400">Data de Nascimento:</label>
-              <p>{study.MainDicomTags.PatientBirthDate}</p>
+                <label className="font-bold text-gray-400">Data de Nascimento:</label>
+                {/* Formatação básica da data */}
+                <p>{study.MainDicomTags.PatientBirthDate.substring(6, 8)}/{study.MainDicomTags.PatientBirthDate.substring(4, 6)}/{study.MainDicomTags.PatientBirthDate.substring(0, 4)}</p>
             </div>
             <div>
               <label className="font-bold text-gray-400">Nº de Acesso:</label>
@@ -73,12 +55,9 @@ export default function DicomViewer({ study, onClose }: DicomViewerProps) {
               <p>{study.MainDicomTags.StudyDescription}</p>
             </div>
             <div>
-              <label className="font-bold text-gray-400">Data do Exame:</label>
-              <p>{study.MainDicomTags.StudyDate}</p>
-            </div>
-            <div>
-              <label className="font-bold text-gray-400">ID do Estudo (DICOM):</label>
-              <p className="break-all">{study.MainDicomTags.StudyInstanceUID}</p>
+                <label className="font-bold text-gray-400">Data do Exame:</label>
+                {/* Formatação básica da data */}
+                <p>{study.MainDicomTags.StudyDate.substring(6, 8)}/{study.MainDicomTags.StudyDate.substring(4, 6)}/{study.MainDicomTags.StudyDate.substring(0, 4)}</p>
             </div>
           </div>
         </aside>
